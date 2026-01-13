@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Your Recommendation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container result-container">
+        <h1>Your Travel Style Result</h1>
+        <p class="subtitle">
+            Based on your social media habits, you were matched to a behavior cluster.
+            This helps personalize the travel style we recommend.
+        </p>
+
+        <div class="result-card">
+            <div class="cluster-badge">
+                Cluster {{ cluster }}
+            </div>
+            <div class="result-body">
+                <h2>Recommended Travel Style</h2>
+                <p class="result-text">{{ recommendation }}</p>
+            </div>
+        </div>
+
+        <div class="result-details">
+            <h3>What this means</h3>
+            <p>
+                Your cluster groups people with similar social media behavior and travel preferences.
+                Use this as a starting point for planning trips that match your vibe.
+            </p>
+        </div>
+
+        <a class="button-link" href="/">Try Another Recommendation</a>
+    </div>
+</body>
+</html>

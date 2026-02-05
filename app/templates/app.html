@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gen Z Travel Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useEffect, useState } = React;
+
+        const routes = ["/", "/login", "/register", "/dashboard"];
+
+        const api = {
+            async me() {
+                const res = await fetch("/api/me");
+                return res.json();
+            },
+            async login(payload) {
+                const res = await fetch("/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || "Login failed");
+                return data;
+            },
+            async register(payload) {
+                const res = await fetch("/api/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || "Register failed");
+                return data;
+            },
+            async logout() {
+                await fetch("/api/logout", { method: "POST" });
+            },
+        };
+
+        const navigate = (path) => {
+            if (!routes.includes(path)) {
+                path = "/login";
+            }
+            window.history.pushState({}, "", path);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+        };
+
+        const LinkButton = ({ to, children, variant = "primary" }) => (
+            <button className={`btn btn-${variant}`} onClick={() => navigate(to)}>
+                {children}
+            </button>
+        );
+
+        const Layout = ({ children }) => (
+            <div className="page">
+                <header className="nav">
+                    <div className="brand" onClick={() => navigate("/")}>
+                        <span>Gen Z</span> Travel
+                    </div>
+                    <div className="nav-actions">
+                        <button className="link" onClick={() => navigate("/login")}>Login</button>
+                        <button className="link" onClick={() => navigate("/register")}>Register</button>
+                    </div>
+                </header>
+                <main className="content">
+                    {children}
+                </main>
+            </div>
+        );
+
+        const Hero = ({ onPrimary, onSecondary }) => (
+            <div className="hero">
+                <div className="hero-text">
+                    <h1>Plan a trip that matches how you really travel.</h1>
+                    <p>
+                        This experience turns your travel habits and content preferences into a
+                        clear, behavior‑based travel style. You’ll get a focused recommendation
+                        you can use right away.
+                    </p>
+                    <ul className="hero-list">
+                        <li>Short, guided survey that takes about 2 minutes.</li>
+                        <li>Personalized travel style summary + explanation.</li>
+                        <li>Save results to revisit and compare later.</li>
+                    </ul>
+                    <div className="hero-actions">
+                        <button className="btn btn-primary" onClick={onPrimary}>Get Started</button>
+                        <button className="btn btn-ghost" onClick={onSecondary}>I already have an account</button>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const Highlights = () => (
+            <div className="home-sections">
+                <section className="section-block">
+                    <div className="eyebrow">How it works</div>
+                    <h2>Three simple steps from survey to travel plan.</h2>
+                    <div className="steps">
+                        <div className="step">
+                            <div className="step-number">1</div>
+                            <div>
+                                <h3>Answer the survey</h3>
+                                <p>Tell us how you explore, what you save, and how you plan.</p>
+                            </div>
+                        </div>
+                        <div className="step">
+                            <div className="step-number">2</div>
+                            <div>
+                                <h3>Get your travel style</h3>
+                                <p>We match you to a behavior cluster and explain the fit.</p>
+                            </div>
+                        </div>
+                        <div className="step">
+                            <div className="step-number">3</div>
+                            <div>
+                                <h3>Plan with confidence</h3>
+                                <p>Use the recommendation to build a trip that feels right.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section className="section-block">
+                    <div className="eyebrow">What you’ll get</div>
+                    <h2>Actionable guidance, not generic advice.</h2>
+                    <div className="feature-grid">
+                        <div className="feature-card">
+                            <h3>Personalized travel style</h3>
+                            <p>A concise summary of how you travel and what energizes you.</p>
+                        </div>
+                        <div className="feature-card">
+                            <h3>Clear recommendation</h3>
+                            <p>A direction for your next trip, tailored to your habits.</p>
+                        </div>
+                        <div className="feature-card">
+                            <h3>Track over time</h3>
+                            <p>Save your profile and compare results after future surveys.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        );
+
+        const AuthCard = ({ title, subtitle, children }) => (
+            <div className="auth-card">
+                <h2>{title}</h2>
+                <p>{subtitle}</p>
+                {children}
+            </div>
+        );
+
+        const InputField = ({ label, type = "text", value, onChange, placeholder }) => (
+            <label className="field">
+                <span>{label}</span>
+                <input
+                    type={type}
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    placeholder={placeholder}
+                />
+            </label>
+        );
+
+        const Dashboard = ({ user, onLogout }) => {
+            const lastRec = user?.last_recommendation;
+            const summaryText = lastRec
+                ? lastRec.recommendation
+                : "Take the survey to generate your first recommendation.";
+            const explanationText = lastRec
+                ? lastRec.explanation
+                : "We’ll summarize your travel style here once you complete a survey.";
+            const createdAt = lastRec?.created_at
+                ? new Date(lastRec.created_at).toLocaleDateString()
+                : "Not yet";
+
+            return (
+            <div className="dashboard">
+                <div className="dashboard-header">
+                    <div>
+                        <div className="eyebrow">Your travel profile</div>
+                        <h2>Welcome back, {user?.name || "Traveler"}.</h2>
+                        <p>
+                            Your survey results turn habits into a clear travel style. Start a new
+                            recommendation anytime to refine your next trip.
+                        </p>
+                    </div>
+                    <button className="btn btn-ghost" onClick={onLogout}>Log out</button>
+                </div>
+                <div className="dashboard-grid">
+                    <div className="dashboard-card">
+                        <h3>Your Profile</h3>
+                        <p className="muted">Email</p>
+                        <p className="value">{user?.email}</p>
+                        <p className="muted">Status</p>
+                        <p className="value">Active</p>
+                        <p className="muted">Last update</p>
+                        <p className="value">{createdAt}</p>
+                    </div>
+                    <div className="dashboard-card highlight">
+                        <h3>Start a new recommendation</h3>
+                        <p>
+                            Take the 2‑minute survey to refresh your travel style and see a new
+                            behavioral recommendation.
+                        </p>
+                        <div className="card-actions">
+                            <a className="btn btn-primary" href="/recommendation">Start survey</a>
+                            <span className="card-note">No account changes required.</span>
+                        </div>
+                    </div>
+                    <div className="dashboard-card">
+                        <h3>How this works</h3>
+                        <ol className="step-list">
+                            <li>Answer a few questions about how you explore and plan.</li>
+                            <li>We match you to a behavior-based travel style.</li>
+                            <li>You get a recommendation and a short explanation.</li>
+                        </ol>
+                    </div>
+                </div>
+                <section className="moodboard-section">
+                    <div className="moodboard-head">
+                        <div>
+                            <div className="eyebrow">Next Trip Moodboard</div>
+                            <h3>Visual inspiration + latest recommendation</h3>
+                        </div>
+                        <span className="chip">{lastRec ? "Latest style" : "No results yet"}</span>
+                    </div>
+                    <div className="moodboard-grid">
+                        <div className="mood-tile tile-one">
+                            <span>Sunrise walk</span>
+                        </div>
+                        <div className="mood-tile tile-two">
+                            <span>Local eats</span>
+                        </div>
+                        <div className="mood-tile tile-three">
+                            <span>Slow mornings</span>
+                        </div>
+                        <div className="mood-tile tile-four">
+                            <span>Photo spots</span>
+                        </div>
+                    </div>
+                    <div className="moodboard-columns">
+                        <div className="moodboard-summary">
+                            <h4>Summary</h4>
+                            <p>{summaryText}</p>
+                        </div>
+                        <div className="moodboard-checklist">
+                            <h4>Mini checklist</h4>
+                            <ul>
+                                <li>{lastRec ? "Pick a 3–4 day itinerary window" : "Complete the survey"}</li>
+                                <li>{lastRec ? "Save 5 places to eat or explore" : "Get your first travel style"}</li>
+                                <li>{lastRec ? "Choose one slow, low‑key day" : "Return here for your checklist"}</li>
+                            </ul>
+                        </div>
+                        <div className="moodboard-summary">
+                            <h4>Why this fits you</h4>
+                            <p>{explanationText}</p>
+                        </div>
+                    </div>
+                    <div className="tag-note">Updates after each new recommendation.</div>
+                </section>
+            </div>
+            );
+        };
+
+        const LoginForm = ({ onSuccess }) => {
+            const [email, setEmail] = React.useState("");
+            const [password, setPassword] = React.useState("");
+            const [pending, setPending] = React.useState(false);
+            const [error, setError] = React.useState("");
+
+            const submit = async (event) => {
+                event.preventDefault();
+                setError("");
+                setPending(true);
+                try {
+                    await api.login({ email, password });
+                    await onSuccess();
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setPending(false);
+                }
+            };
+
+            return (
+                <AuthCard
+                    title="Welcome back"
+                    subtitle="Log in to access your dashboard and travel recommendations."
+                >
+                    <form onSubmit={submit}>
+                        <InputField
+                            label="Email"
+                            type="email"
+                            value={email}
+                            onChange={setEmail}
+                            placeholder="you@studio.com"
+                        />
+                        <InputField
+                            label="Password"
+                            type="password"
+                            value={password}
+                            onChange={setPassword}
+                            placeholder="••••••••"
+                        />
+                        {error && <div className="error">{error}</div>}
+                        <button className="btn btn-primary" type="submit" disabled={pending}>
+                            {pending ? "Logging in..." : "Login"}
+                        </button>
+                        <div className="switch">
+                            Need an account? <button type="button" className="link" onClick={() => navigate("/register")}>Register</button>
+                        </div>
+                    </form>
+                </AuthCard>
+            );
+        };
+
+        const RegisterForm = ({ onSuccess }) => {
+            const [name, setName] = React.useState("");
+            const [email, setEmail] = React.useState("");
+            const [password, setPassword] = React.useState("");
+            const [pending, setPending] = React.useState(false);
+            const [error, setError] = React.useState("");
+
+            const submit = async (event) => {
+                event.preventDefault();
+                setError("");
+                setPending(true);
+                try {
+                    await api.register({ name, email, password });
+                    await onSuccess();
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setPending(false);
+                }
+            };
+
+            return (
+                <AuthCard
+                    title="Create your account"
+                    subtitle="Save your travel profile and revisit recommendations anytime."
+                >
+                    <form onSubmit={submit}>
+                        <InputField
+                            label="Full Name"
+                            value={name}
+                            onChange={setName}
+                            placeholder="Avery Nomad"
+                        />
+                        <InputField
+                            label="Email"
+                            type="email"
+                            value={email}
+                            onChange={setEmail}
+                            placeholder="you@studio.com"
+                        />
+                        <InputField
+                            label="Password"
+                            type="password"
+                            value={password}
+                            onChange={setPassword}
+                            placeholder="Create a password"
+                        />
+                        {error && <div className="error">{error}</div>}
+                        <button className="btn btn-primary" type="submit" disabled={pending}>
+                            {pending ? "Creating..." : "Create Account"}
+                        </button>
+                        <div className="switch">
+                            Already registered? <button type="button" className="link" onClick={() => navigate("/login")}>Login</button>
+                        </div>
+                    </form>
+                </AuthCard>
+            );
+        };
+
+        const App = () => {
+            const [route, setRoute] = useState(window.location.pathname);
+            const [loading, setLoading] = useState(true);
+            const [user, setUser] = useState(null);
+
+            useEffect(() => {
+                const handler = () => setRoute(window.location.pathname);
+                window.addEventListener("popstate", handler);
+                return () => window.removeEventListener("popstate", handler);
+            }, []);
+
+            useEffect(() => {
+                api.me().then((data) => {
+                    if (data.authenticated) {
+                        setUser(data.user);
+                    } else {
+                        setUser(null);
+                    }
+                    setLoading(false);
+                });
+            }, []);
+
+            const goDashboard = async () => {
+                const data = await api.me();
+                if (data.authenticated) {
+                    setUser(data.user);
+                    navigate("/dashboard");
+                }
+            };
+
+            let content;
+
+            if (loading) {
+                content = <div className="loading">Loading...</div>;
+            } else if (route === "/" ) {
+                content = (
+                    <div className="home">
+                        <Hero
+                            onPrimary={() => navigate("/register")}
+                            onSecondary={() => navigate("/login")}
+                        />
+                        <Highlights />
+                    </div>
+                );
+            } else if (route === "/login") {
+                content = <LoginForm onSuccess={goDashboard} />;
+            } else if (route === "/register") {
+                content = <RegisterForm onSuccess={goDashboard} />;
+            } else if (route === "/dashboard") {
+                if (!user) {
+                    content = (
+                        <div className="gate">
+                            <p>You need to log in to access the dashboard.</p>
+                            <LinkButton to="/login">Go to Login</LinkButton>
+                        </div>
+                    );
+                } else {
+                    content = (
+                        <Dashboard
+                            user={user}
+                            onLogout={async () => {
+                                await api.logout();
+                                setUser(null);
+                                navigate("/login");
+                            }}
+                        />
+                    );
+                }
+            } else {
+                content = (
+                    <div className="gate">
+                        <p>That page doesn't exist.</p>
+                        <LinkButton to="/login">Back to Login</LinkButton>
+                    </div>
+                );
+            }
+
+            return (
+                <Layout>
+                    {content}
+                </Layout>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+</body>
+</html>
